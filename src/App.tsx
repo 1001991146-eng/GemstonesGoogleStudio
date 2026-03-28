@@ -4,6 +4,7 @@
  */
 
 import { 
+  AlertCircle,
   BookOpen, 
   Camera, 
   CheckCircle2, 
@@ -26,7 +27,9 @@ import {
   Library,
   Search, 
   Settings, 
-  Smartphone 
+  Smartphone,
+  Wrench,
+  HelpCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
@@ -40,6 +43,7 @@ export default function App() {
     { id: 2, title: "דרייב", icon: <Cloud className="w-5 h-5" /> },
     { id: 3, title: "קוד", icon: <Code className="w-5 h-5" /> },
     { id: 4, title: "הגנה", icon: <GraduationCap className="w-5 h-5" /> },
+    { id: 5, title: "תקלות", icon: <HelpCircle className="w-5 h-5" /> },
   ];
 
   const pythonCode = `import tensorflow as tf
@@ -690,104 +694,147 @@ prediction, confidence = predict_single(image_path)`}
                   </div>
                 </div>
 
-                {/* Input Mode Logic Section */}
-                <div className="space-y-8 mb-16">
+                {/* Main Logic & Menu Section */}
+                <div className="space-y-12 mb-16">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
                     <GitBranch className="w-6 h-6 text-indigo-600" />
-                    <h3 className="text-2xl font-black text-slate-800">ניתוח לוגיקת בחירת מצב (Mode Selection)</h3>
+                    <h3 className="text-2xl font-black text-slate-800">ניתוח לוגיקת התוכנית הראשית (Main Menu)</h3>
                   </div>
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                  
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                     <p className="text-sm text-slate-600 leading-relaxed">
-                      כאן אנחנו משתמשים ב<b>תנאים</b> כדי להחליט מאיפה יגיעו הנתונים שלנו. הקוד בודק את ה<b>מחרוזת</b> שנמצאת במשתנה <code>mode</code> ופועל בהתאם.
+                      זהו ה"מוח" של התוכנית. כאן אנחנו מחברים את כל הפונקציות שכתבנו ומאפשרים למשתמש לבחור איך הוא רוצה לעבוד עם ה-AI.
                     </p>
-                    <pre className="bg-slate-900 text-indigo-300 p-4 rounded-xl font-mono text-xs overflow-x-auto whitespace-pre" dir="ltr">
-{`# הגדרת מצב העבודה (מחרוזת - String)
-mode = "camera" 
+                    
+                    <pre className="bg-slate-900 text-indigo-300 p-6 rounded-xl font-mono text-xs overflow-x-auto whitespace-pre leading-relaxed" dir="ltr">
+{`# Main Menu
+print("\\n" + "="*30)
+print(" GEMSTONE CLASSIFICATION MENU")
+print("="*30)
+print("1 - Live Camera")
+print("2 - Single Upload")
+print("3 - Interactive Accuracy Test (20% set)")
+sys.stdout.flush()
+choice = input("Select Option: ")
 
-if mode == "camera":
-    # מצב מצלמה: קריאה לפעולה (Function)
-    path = take_photo()
-    predict_single(path)
-
-elif mode == "gallery":
-    # מצב גלריה: מעבר על רשימה (List) בעזרת לולאה (Loop)
-    images = ["ruby.jpg", "emerald.png", "diamond.webp"]
-    for img_path in images:
-        predict_single(img_path)
-
-elif mode == "test":
-    # מצב בדיקה: שימוש במילון (Dictionary) להשוואת תוצאות
-    test_data = {"test1.jpg": "Amethyst", "test2.jpg": "Turquoise"}
-    for path, expected in test_data.items():
-        result, conf = predict_single(path, silent=True)
-        if result == expected: # תנאי (Condition)
-            print(f"✅ הצלחה! זוהה {result}")`}
+if choice == '1':
+    photo = take_photo()
+    predict_single(photo)
+elif choice == '2':
+    uploaded = files.upload()
+    if uploaded:
+        predict_single(list(uploaded.keys())[0])
+elif choice == '3':
+    print("\\nPlease upload your test images (20% set)...")
+    uploaded = files.upload()
+    correct = 0
+    total = len(uploaded)
+    
+    for i, filename in enumerate(uploaded.keys()):
+        clear_output(wait=True)
+        print(f"\\033[1;34mIMAGE {i+1} / {total}: {filename}\\033[0m")
+        
+        img = cv2.imread(filename)
+        cv2_imshow(cv2.resize(img, (300, 220)))
+        
+        time.sleep(0.5)
+        
+        print("\\n\\033[1;33m--- CATEGORIES ---\\033[0m")
+        for idx, name in enumerate(class_names):
+            print(f"[{idx}] {name}")
+        
+        print("\\n" * 2) 
+        sys.stdout.flush()
+        
+        prompt = f"\\033[1;35m>>> ENTER CORRECT CATEGORY (0-{len(class_names)-1}) or Name:\\033[0m "
+        user_input = input(prompt).strip()
+        
+        actual = ""
+        if user_input.isdigit() and int(user_input) < len(class_names):
+            actual = class_names[int(user_input)]
+        else:
+            for name in class_names:
+                if user_input.lower() == name.lower():
+                    actual = name
+                    break
+            if not actual: actual = user_input
+            
+        # הרצה שקטה עבור סטטיסטיקה בלבד - ללא אתר וללא שמע
+        pred_label, conf = predict_single(filename, silent=True)
+        
+        print(f"\\nResult: AI said \\033[1m{pred_label}\\033[0m (Real: \\033[1m{actual}\\033[0m)")
+        
+        if pred_label.lower() == actual.lower():
+            correct += 1
+            print("🟢 MATCH!")
+        else:
+            print("🔴 MISMATCH")
+        
+        sys.stdout.flush()
+        input("\\nPress Enter for next image...")
+            
+    clear_output()
+    acc = (correct / total) * 100
+    print(f"\\n" + "🏁"*15)
+    print(f" TEST COMPLETE | Accuracy: {acc:.2f}%")
+    print("🏁"*15)
+else:
+    print("Invalid Selection.")`}
                     </pre>
-                    <div className="grid md:grid-cols-2 gap-4 mt-4">
-                      <div className="bg-indigo-50 p-4 rounded-xl text-xs text-indigo-900">
-                        <span className="font-bold block mb-1 underline">מושגים שבהם השתמשנו:</span>
-                        <ul className="list-disc list-inside space-y-1">
-                          <li><b>מחרוזת (String):</b> המשתנה <code>mode</code> שומר טקסט שמגדיר את המצב.</li>
-                          <li><b>תנאים (Conditions):</b> ה-<code>if</code> וה-<code>elif</code> מאפשרים למחשב "לבחור" מסלול.</li>
-                          <li><b>פעולות (Functions):</b> קריאה ל-<code>take_photo()</code> לביצוע משימה מוגדרת.</li>
-                        </ul>
-                      </div>
-                      <div className="bg-indigo-50 p-4 rounded-xl text-xs text-indigo-900">
-                        <span className="font-bold block mb-1 underline">מבני נתונים ותהליכים:</span>
-                        <ul className="list-disc list-inside space-y-1">
-                          <li><b>רשימה (List):</b> אוסף של נתיבי תמונות בגלריה (כמו <b>תור</b> של משימות).</li>
-                          <li><b>לולאות (Loops):</b> ה-<code>for</code> עובר על כל פריט ברשימה אחד אחרי השני.</li>
-                          <li><b>מילון (Dictionary):</b> מבנה ששומר "מפתח" (תמונה) מול "ערך" (השם האמיתי שלה).</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Logic Section */}
-                <div className="space-y-8 mb-16">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
-                    <Settings className="w-6 h-6 text-indigo-600" />
-                    <h3 className="text-2xl font-black text-slate-800">הסבר הלוגיקה הכללית</h3>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 space-y-3">
-                      <h4 className="font-black text-indigo-900">איך המחשב "רואה"?</h4>
-                      <p className="text-sm text-slate-600 leading-relaxed">
-                        המחשב הופך את התמונה לטבלה ענקית של מספרים. בקוד אנחנו מבצעים <span className="font-bold">"נרמול"</span> - הופכים את המספרים לטווח שבין 1- ל-1 כדי שה-AI יוכל לעבד אותם במהירות.
-                      </p>
-                    </div>
-                    <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 space-y-3">
-                      <h4 className="font-black text-indigo-900">שינוי גודל (Resizing)</h4>
-                      <p className="text-sm text-slate-600 leading-relaxed">
-                        המודל יודע לעבוד רק עם תמונות קטנות (224x224 פיקסלים). לכן, הקוד קודם כל "מכווץ" כל תמונה לגודל הזה לפני שהוא מנסה לנחש מה בתמונה.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                    <div className="space-y-8 mt-8">
+                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                        <h4 className="font-black text-slate-800 mb-3 flex items-center gap-2">
+                          <Settings className="w-5 h-5 text-indigo-600" />
+                          1. הצגת התפריט וקלט המשתמש
+                        </h4>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          אנחנו משתמשים ב-<code>print</code> כדי לצייר תפריט יפה וב-<code>input</code> כדי לקבל מהמשתמש את הבחירה שלו (1, 2 או 3). הבחירה נשמרת כ<b>מחרוזת (String)</b> בתוך המשתנה <code>choice</code>.
+                        </p>
+                      </div>
 
-                {/* Main Menu Section */}
-                <div className="space-y-8">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-4">
-                    <List className="w-6 h-6 text-indigo-600" />
-                    <h3 className="text-2xl font-black text-slate-800">הסבר התוכנית הראשית (Main Menu)</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {[
-                      { num: "1", title: "אופציה 1 - מצלמה חיה", text: "מפעילה את take_photo, שומרת תמונה זמנית ושולחת אותה מיד ל-predict_single." },
-                      { num: "2", title: "אופציה 2 - העלאת קובץ", text: "משתמשת בספריית files.upload של גוגל ומנתחת את הקובץ שנבחר." },
-                      { num: "3", title: "אופציה 3 - מבחן הדיוק", text: "הלוגיקה הכי מורכבת. עוברת על תמונות, משווה את ניחוש ה-AI לתשובה הנכונה, צוברת נקודות ומחשבת אחוז הצלחה סופי." },
-                    ].map((opt, idx) => (
-                      <div key={idx} className="flex gap-4 items-start bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                        <div className="bg-indigo-600 text-white w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-sm">
-                          {opt.num}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800">{opt.title}</p>
-                          <p className="text-sm text-slate-600">{opt.text}</p>
+                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                        <h4 className="font-black text-slate-800 mb-3 flex items-center gap-2">
+                          <PlayCircle className="w-5 h-5 text-indigo-600" />
+                          2. בחירת מצב עבודה (תנאים)
+                        </h4>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          בעזרת <b>תנאים (if/elif)</b>, המחשב מחליט מה לעשות:
+                          <ul className="list-disc list-inside mt-2 space-y-1">
+                            <li><b>מצב 1:</b> מפעיל את המצלמה בעזרת <code>take_photo</code>.</li>
+                            <li><b>מצב 2:</b> מאפשר להעלות קובץ בודד מהמחשב.</li>
+                            <li><b>מצב 3:</b> נכנס למצב המורכב ביותר - מבחן הדיוק.</li>
+                          </ul>
+                        </p>
+                      </div>
+
+                      <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                        <h4 className="font-black text-indigo-900 mb-3 flex items-center gap-2">
+                          <Search className="w-5 h-5 text-indigo-600" />
+                          3. מבחן הדיוק האינטראקטיבי (הלוגיקה המורכבת)
+                        </h4>
+                        <div className="space-y-4 text-sm text-slate-700">
+                          <p>זהו תהליך שמשלב את כל מה שלמדנו:</p>
+                          <ul className="list-decimal list-inside space-y-2">
+                            <li><b>לולאת For:</b> אנחנו עוברים על כל הקבצים שהועלו (<b>רשימה</b> של מפתחות במילון <code>uploaded</code>).</li>
+                            <li><b>הצגת התמונה:</b> שימוש ב-<code>cv2_imshow</code> כדי להראות למשתמש מה ה-AI רואה.</li>
+                            <li><b>קלט חכם:</b> המשתמש יכול להקיש את מספר הקטגוריה או את שמה. הקוד בודק אם הקלט הוא מספר (<code>isdigit</code>) או טקסט.</li>
+                            <li><b>השוואה:</b> המחשב משווה בין מה שהמשתמש אמר (<code>actual</code>) לבין מה שה-AI זיהה (<code>pred_label</code>).</li>
+                            <li><b>צבירת נתונים:</b> אם יש התאמה, אנחנו מוסיפים 1 למשתנה <code>correct</code>.</li>
+                          </ul>
                         </div>
                       </div>
-                    ))}
+
+                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                        <h4 className="font-black text-slate-800 mb-3 flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          4. חישוב התוצאות הסופיות
+                        </h4>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          בסיום הלולאה, המחשב מחשב את אחוז הדיוק: <code>(correct / total) * 100</code>. זה נותן לנו מדד מדויק עד כמה המודל שאימנו באמת עובד טוב על נתונים חדשים שהוא לא ראה מעולם.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -798,6 +845,81 @@ elif mode == "test":
                   </h3>
                   <p className="text-indigo-100 italic leading-relaxed">
                     "השתמשנו בפונקציות כדי שהקוד יהיה מודולרי - כלומר, כל חלק אחראי על משימה אחת (צילום, זיהוי, מידע), מה שהופך אותו לקל לקריאה ולתיקון שגיאות."
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {currentStep === 5 && (
+            <motion.div
+              key="step6"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-12"
+            >
+              <div className="bg-white rounded-3xl p-8 md:p-12 shadow-2xl shadow-indigo-100 border border-slate-100">
+                <div className="flex items-center gap-4 mb-12">
+                  <div className="bg-red-100 p-4 rounded-2xl">
+                    <AlertCircle className="w-8 h-8 text-red-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black text-slate-800">שלב 6: איתור תקלות (FAQ)</h2>
+                    <p className="text-slate-500 font-medium">מה עושים אם משהו לא עובד? פתרונות מהירים לבעיות נפוצות.</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {[
+                    {
+                      q: "המצלמה לא נפתחת ב-Colab",
+                      a: "ודאו שנתתם רשות לדפנפן להשתמש במצלמה. לפעמים צריך לרענן את הדף או לסגור תוכנות אחרות (כמו Zoom) שמשתמשות במצלמה באותו זמן.",
+                      icon: <Camera className="w-5 h-5 text-red-500" />
+                    },
+                    {
+                      q: "שגיאת 'File Not Found'",
+                      a: "בדקו שהקובץ keras_model.h5 וקובץ labels.txt נמצאים בדיוק באותה תיקייה שבה הקוד רץ. שימו לב לאותיות גדולות/קטנות בשם הקובץ!",
+                      icon: <FileText className="w-5 h-5 text-red-500" />
+                    },
+                    {
+                      q: "הזיהוי לא מדויק (אחוז נמוך)",
+                      a: "ה-AI צריך תנאים טובים: תאורה חזקה, רקע נקי (לא על היד!) ומרחק נכון מהעדשה. אם זה עדיין לא עובד, אולי כדאי להוסיף עוד תמונות לאימון ב-Teachable Machine.",
+                      icon: <Search className="w-5 h-5 text-red-500" />
+                    },
+                    {
+                      q: "שגיאת אינדנטציה (IndentationError)",
+                      a: "בפייתון, הרווחים בתחילת השורה הם קריטיים! ודאו שכל מה שבתוך if או def מוזז ימינה בדיוק באותה כמות רווחים.",
+                      icon: <Code className="w-5 h-5 text-red-500" />
+                    },
+                    {
+                      q: "המודל לא נטען (Keras Error)",
+                      a: "ודאו שהתקנתם את הגרסה הנכונה של TensorFlow (בדרך כלל 2.x). אם המודל יוצא מ-Teachable Machine, הוא אמור להתאים לגרסאות החדשות.",
+                      icon: <Settings className="w-5 h-5 text-red-500" />
+                    },
+                    {
+                      q: "אין קול או מוזיקה",
+                      a: "בדקו שהרמקולים דולקים ושהלינקים של המוזיקה בקוד עדיין עובדים. ב-Colab לפעמים צריך ללחוץ על כפתור ה-Play בנגן שמופיע.",
+                      icon: <Music className="w-5 h-5 text-red-500" />
+                    }
+                  ].map((item, idx) => (
+                    <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 hover:border-red-200 transition-colors group">
+                      <div className="flex items-center gap-3 mb-3">
+                        {item.icon}
+                        <h4 className="font-black text-slate-800 group-hover:text-red-700 transition-colors">{item.q}</h4>
+                      </div>
+                      <p className="text-sm text-slate-600 leading-relaxed">{item.a}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-12 p-8 bg-red-50 rounded-3xl border border-red-100">
+                  <h3 className="text-lg font-black text-red-900 mb-4 flex items-center gap-2">
+                    <Wrench className="w-6 h-6" />
+                    כלל הזהב לפתרון בעיות
+                  </h3>
+                  <p className="text-red-800 text-sm leading-relaxed">
+                    "אם הקוד 'צועק' עליכם באדום - אל תיבהלו! קראו את השורה האחרונה של השגיאה. בדרך כלל כתוב שם בדיוק מה חסר או מה לא תקין. רוב הטעויות הן פשוט טעויות כתיב קטנות או קובץ ששכחנו להעלות."
                   </p>
                 </div>
               </div>
