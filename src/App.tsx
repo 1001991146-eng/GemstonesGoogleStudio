@@ -29,7 +29,9 @@ import {
   Settings, 
   Smartphone,
   Wrench,
-  HelpCircle
+  HelpCircle,
+  Sparkles,
+  Zap
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
@@ -44,6 +46,7 @@ export default function App() {
     { id: 3, title: "קוד", icon: <Code className="w-5 h-5" /> },
     { id: 4, title: "הגנה", icon: <GraduationCap className="w-5 h-5" /> },
     { id: 5, title: "תקלות", icon: <HelpCircle className="w-5 h-5" /> },
+    { id: 6, title: "בונוס", icon: <Sparkles className="w-5 h-5" /> },
   ];
 
   const pythonCode = `import tensorflow as tf
@@ -223,6 +226,232 @@ elif choice == '3':
             print("🔴 MISMATCH")
         sys.stdout.flush()
         input("\\nPress Enter for next image...")
+    clear_output()
+    acc = (correct / total) * 100
+    print(f"\\n" + "🏁"*15)
+    print(f" TEST COMPLETE | Accuracy: {acc:.2f}%")
+    print("🏁"*15)
+else:
+    print("Invalid Selection.")`;
+
+  const pythonCompleteCode = `import tensorflow as tf
+import numpy as np
+import cv2
+import os
+import sys
+import time
+from google.colab import drive, files
+from google.colab.patches import cv2_imshow
+from IPython.display import display, Javascript, Audio, clear_output
+from google.colab.output import eval_js
+from base64 import b64decode
+
+# 1. התקנת הספרייה (במידת הצורך)
+!pip install -q -U google-generativeai
+
+import google.generativeai as genai
+from google.colab import userdata
+
+# 1. Mount Google Drive
+drive.mount('/content/drive')
+
+# 2. Paths Configuration
+PATH = '/content/drive/MyDrive/Gemstone_Project/'
+MODEL_PATH = os.path.join(PATH, 'saved_model')
+LABELS_PATH = os.path.join(PATH, 'labels.txt')
+
+# 3. Load Model using TFSMLayer
+if os.path.exists(MODEL_PATH):
+    sm_layer = tf.keras.layers.TFSMLayer(MODEL_PATH, call_endpoint='serving_default')
+    model = tf.keras.Sequential([sm_layer])
+
+    with open(LABELS_PATH, "r", encoding="utf-8") as f:
+        class_names = []
+        for line in f.readlines():
+            parts = line.strip().split(' ')
+            class_names.append(parts[1] if len(parts) > 1 else parts[0])
+    print(f"✅ System Ready! Loaded categories: {class_names}")
+else:
+    print("❌ Error: Path not found! Ensure folder 'Gemstone_Project/saved_model' exists.")
+
+# 2. הגדרת המפתח (יש להוסיף את המפתח ב-Secrets של Colab)
+API_KEY = userdata.get('GEMINI_API_KEY')
+genai.configure(api_key=API_KEY)
+
+# פעולת עזר שמדפיסה אילו מודלים נתמכים:
+for m in genai.list_models():
+    if 'generateContent' in m.supported_generation_methods:
+        print(m.name)
+
+# 3. יצירת פונקציה ששואלת את Gemini
+def ask_gemini_about_stone(stone_name):
+    ai_model = genai.GenerativeModel("gemma-3-1b-it")
+
+    # פרומפט חכם וממוקד
+    prompt = f"You are a gemologist. I found a {stone_name}. Tell me 3 rare facts in Hebrew."
+
+    response = ai_model.generate_content(prompt)
+    return response.text
+
+def play_gemstone_theme_music(prediction):
+    """השמעת שיר או נעימה המותאמת לאופי האבן"""
+    music_library = {
+        "Amethyst": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",    # נעימה רוחנית/רגועה
+        "Rose-Quartz": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", # נעימה רומנטית/עדינה
+        "Turquoise": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"   # נעימה אוריינטלית/חזקה
+    }
+
+    music_url = music_library.get(prediction, "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3")
+    print(f"🎵 משמיע נעימת רקע תואמת עבור {prediction}...")
+    display(Audio(url=music_url, autoplay=True))
+
+def open_gemstone_info(prediction):
+    """פונקציה לפתיחת מידע נוסף על האבן שזוהתה"""
+    print(f"\\n✨ מידע נוסף על {prediction}:")
+
+    if prediction == "Amethyst":
+        print("💜 זוהה אמטיסט (Amethyst)! אבן המזל של חודש פברואר. סמל לשלווה וחיבור רוחני.")
+        display(Javascript(f'window.open("https://www.gia.edu/amethyst", "_blank");'))
+
+    elif prediction == "Rose-Quartz":
+        print("🩷 זוהה רוז קוורץ (Rose-Quartz)! אבן האהבה ללא תנאי. מקושרת לריפוי רגשי ופתיחת הלב.")
+        display(Javascript(f'window.open("https://www.gia.edu/rose-quartz", "_blank");'))
+
+    elif prediction == "Turquoise":
+        print("🩵 זוהה טורקיז (Turquoise)! אבן המזל של דצמבר. סמל להגנה, מזל טוב וחוכמה עתיקה.")
+        display(Javascript(f'window.open("https://www.gia.edu/turquoise", "_blank");'))
+
+    else:
+        print(f"🔍 מחפש מידע על המזלות והמשמעות של {prediction}...")
+        search_url = f"https://www.google.com/search?q={prediction}+stone+meaning+zodiac"
+        display(Javascript(f'window.open("{search_url}", "_blank");'))
+
+def predict_single(image_path, silent=False):
+    img = cv2.imread(image_path)
+    if img is None: return None, 0
+
+    img_resized = cv2.resize(img, (224, 224))
+    img_array = np.asarray(img_resized, dtype=np.float32).reshape(1, 224, 224, 3)
+    img_array = (img_array / 127.5) - 1
+
+    predictions_dict = model.predict(img_array, verbose=0)
+
+    if isinstance(predictions_dict, dict):
+        output_key = list(predictions_dict.keys())[0]
+        prediction_probs = predictions_dict[output_key]
+    else:
+        prediction_probs = predictions_dict
+
+    index = np.argmax(prediction_probs)
+    conf = float(prediction_probs[0][index])
+
+    if not silent:
+        print(f"\\n--- Model Result: {class_names[index]} ({conf*100:.1f}%) ---")
+        cv2_imshow(cv2.resize(img, (300, 220)))
+
+        # פונקציות חיווי מורחבות (רק במצב זיהוי בודד)
+        open_gemstone_info(class_names[index])
+        play_gemstone_theme_music(class_names[index])
+
+    return class_names[index], conf
+
+def take_photo(filename='photo.jpg'):
+  js = Javascript('''
+    async function takePhoto() {
+      const div = document.createElement('div');
+      const video = document.createElement('video');
+      video.style.display = 'block';
+      const stream = await navigator.mediaDevices.getUserMedia({video: true});
+      document.body.appendChild(div);
+      div.appendChild(video);
+      video.srcObject = stream;
+      await video.play();
+      const btn = document.createElement('button');
+      btn.textContent = 'Capture Gemstone';
+      btn.style.cssText = 'padding:10px; background:purple; color:white; margin:10px; border-radius:5px;';
+      div.appendChild(btn);
+      await new Promise((resolve) => btn.onclick = resolve);
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      stream.getVideoTracks()[0].stop(); div.remove();
+      return canvas.toDataURL('image/jpeg');
+    }
+  ''')
+  display(js)
+  data = eval_js('takePhoto()')
+  binary = b64decode(data.split(',')[1])
+  with open(filename, 'wb') as f: f.write(binary)
+  return filename
+
+# Main Menu
+print("\\n" + "="*30)
+print(" GEMSTONE CLASSIFICATION MENU")
+print("="*30)
+print("1 - Live Camera")
+print("2 - Single Upload")
+print("3 - Interactive Accuracy Test (20% set)")
+sys.stdout.flush()
+choice = input("Select Option: ")
+
+if choice == '1':
+    photo = take_photo()
+    pred_label, conf = predict_single(photo)
+    print(ask_gemini_about_stone(pred_label)) # Added print statement
+elif choice == '2':
+    uploaded = files.upload()
+    if uploaded:
+        pred_label, conf = predict_single(list(uploaded.keys())[0])
+        print(ask_gemini_about_stone(pred_label)) # Added print statement
+elif choice == '3':
+    print("\\nPlease upload your test images (20% set)...")
+    uploaded = files.upload()
+    correct = 0
+    total = len(uploaded)
+
+    for i, filename in enumerate(uploaded.keys()):
+        clear_output(wait=True)
+        print(f"\\033[1;34mIMAGE {i+1} / {total}: {filename}\\033[0m")
+
+        img = cv2.imread(filename)
+        cv2_imshow(cv2.resize(img, (300, 220)))
+
+        time.sleep(0.5)
+
+        print("\\n\\033[1;33m--- CATEGORIES ---\\033[0m")
+        for idx, name in enumerate(class_names):
+            print(f"[{idx}] {name}")
+
+        print("\\n" * 2)
+        sys.stdout.flush()
+
+        prompt = f"\\033[1;35m>>> ENTER CORRECT CATEGORY (0-{len(class_names)-1}) or Name:\\033[0m "
+        user_input = input(prompt).strip()
+
+        actual = ""
+        if user_input.isdigit() and int(user_input) < len(class_names):
+            actual = class_names[int(user_input)]
+        else:
+            for name in class_names:
+                if user_input.lower() == name.lower():
+                    actual = name
+                    break
+            if not actual: actual = user_input
+
+        # הרצה שקטה עבור סטטיסטיקה בלבד - ללא אתר וללא שמע
+        pred_label, conf = predict_single(filename, silent=True)
+
+        print(f"\\nResult: AI said \\033[1m{pred_label}\\033[0m (Real: \\033[1m{actual}\\033[0m)")
+
+        if pred_label.lower() == actual.lower():
+            correct += 1
+            print("🟢 MATCH!")
+        else:
+            print("🔴 MISMATCH")
+
+        sys.stdout.flush()
+        input("\\nPress Enter for next image...")
+
     clear_output()
     acc = (correct / total) * 100
     print(f"\\n" + "🏁"*15)
@@ -798,14 +1027,14 @@ else:
                           <PlayCircle className="w-5 h-5 text-indigo-600" />
                           2. בחירת מצב עבודה (תנאים)
                         </h4>
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                          בעזרת <b>תנאים (if/elif)</b>, המחשב מחליט מה לעשות:
-                          <ul className="list-disc list-inside mt-2 space-y-1">
-                            <li><b>מצב 1:</b> מפעיל את המצלמה בעזרת <code>take_photo</code>.</li>
-                            <li><b>מצב 2:</b> מאפשר להעלות קובץ בודד מהמחשב.</li>
-                            <li><b>מצב 3:</b> נכנס למצב המורכב ביותר - מבחן הדיוק.</li>
-                          </ul>
-                        </p>
+                      <div className="text-sm text-slate-600 leading-relaxed">
+                        בעזרת <b>תנאים (if/elif)</b>, המחשב מחליט מה לעשות:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li><b>מצב 1:</b> מפעיל את המצלמה בעזרת <code>take_photo</code>.</li>
+                          <li><b>מצב 2:</b> מאפשר להעלות קובץ בודד מהמחשב.</li>
+                          <li><b>מצב 3:</b> נכנס למצב המורכב ביותר - מבחן הדיוק.</li>
+                        </ul>
+                      </div>
                       </div>
 
                       <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
@@ -921,6 +1150,173 @@ else:
                   <p className="text-red-800 text-sm leading-relaxed">
                     "אם הקוד 'צועק' עליכם באדום - אל תיבהלו! קראו את השורה האחרונה של השגיאה. בדרך כלל כתוב שם בדיוק מה חסר או מה לא תקין. רוב הטעויות הן פשוט טעויות כתיב קטנות או קובץ ששכחנו להעלות."
                   </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {currentStep === 6 && (
+            <motion.div
+              key="step7"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-12"
+            >
+              <div className="bg-white rounded-3xl p-8 md:p-12 shadow-2xl shadow-indigo-100 border border-slate-100">
+                <div className="flex items-center gap-4 mb-12">
+                  <div className="bg-amber-100 p-4 rounded-2xl">
+                    <Sparkles className="w-8 h-8 text-amber-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black text-slate-800">שלב 7: שלב הבונוס - שילוב Gemma 3 AI</h2>
+                    <p className="text-slate-500 font-medium">הפיכת האפליקציה לחכמה באמת עם מודל השפה החדש Gemma 3.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-10">
+                  {/* Explanation of Changes */}
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                    <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">
+                      <Info className="w-6 h-6 text-indigo-600" />
+                      מה השתנה מהתוכנית בשלב 4?
+                    </h3>
+                    <div className="space-y-4 text-sm text-slate-600">
+                      <p>חשוב להבין: <b>טרם השתנה דבר בבסיס הקוד.</b> הלוגיקה של זיהוי האבנים (Teachable Machine) נשארת זהה. מה שנוסף זה "שכבת חוכמה" מעל שמאפשרת לנו לשאול את ה-AI שאלות על האבן שזוהתה:</p>
+                      <ul className="list-disc list-inside space-y-2">
+                        <li><strong>התקנה חדשה:</strong> הוספנו את ספריית <code>google-generativeai</code>.</li>
+                        <li><strong>חיבור ל-Gemma 3:</strong> הגדרנו את המודל <code>gemma-3-1b-it</code>.</li>
+                        <li><strong>פעולת עזר למודלים:</strong> הוספנו קוד שמדפיסה אילו מודלים נתמכים בחשבון שלכם.</li>
+                        <li><strong>שילוב בתפריט:</strong> עדכנו את אפשרויות 1 ו-2 כך שאחרי הזיהוי, המערכת תשלח שאילתה ל-AI.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* API Key Instructions */}
+                  <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                    <h3 className="text-xl font-black text-indigo-900 mb-4 flex items-center gap-2">
+                      <Settings className="w-6 h-6 text-indigo-600" />
+                      איך מגדירים את ה-API Key ב-Google Colab?
+                    </h3>
+                    <div className="space-y-4 text-sm text-indigo-800">
+                      <p>כדי שהקוד יעבוד, עליכם להגדיר את המפתח בצורה בטוחה:</p>
+                      <ol className="list-decimal list-inside space-y-3">
+                        <li>היכנסו ל- <a href="https://aistudio.google.com/app/apikey" target="_blank" className="underline font-bold">Google AI Studio</a> וצרו מפתח חדש.</li>
+                        <li>ב-Google Colab, לחצו על סמל המפתח (<b>Secrets</b>) בתפריט השמאלי.</li>
+                        <li>הוסיפו סוד חדש (Add new secret):
+                          <ul className="list-disc list-inside mr-6 mt-1">
+                            <li>שם (Name): <code>GEMINI_API_KEY</code></li>
+                            <li>ערך (Value): הדביקו את המפתח שקיבלתם.</li>
+                          </ul>
+                        </li>
+                        <li><b>חשוב:</b> ודאו שהמתג "Notebook access" דלוק עבור המפתח הזה.</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  {/* Complete Code Block with Highlights */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                        <Code className="w-6 h-6 text-indigo-600" />
+                        הקוד המלא והמשולב (השורות הצבועות הן השינויים)
+                      </h3>
+                    </div>
+                    
+                    <div className="bg-slate-900 rounded-xl overflow-hidden shadow-2xl" dir="ltr">
+                      <div className="bg-slate-800 px-4 py-2 flex gap-2 border-b border-slate-700">
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      </div>
+                      <div className="p-6 font-mono text-xs leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
+                        <div className="text-indigo-300">import tensorflow as tf</div>
+                        <div className="text-indigo-300">import numpy as np</div>
+                        <div className="text-indigo-300">import cv2</div>
+                        <div className="text-indigo-300">import os</div>
+                        <div className="text-indigo-300">import sys</div>
+                        <div className="text-indigo-300">import time</div>
+                        <div className="text-indigo-300">from google.colab import drive, files</div>
+                        <div className="text-indigo-300">from google.colab.patches import cv2_imshow</div>
+                        <div className="text-indigo-300">from IPython.display import display, Javascript, Audio, clear_output</div>
+                        <div className="text-indigo-300">from google.colab.output import eval_js</div>
+                        <div className="text-indigo-300">from base64 import b64decode</div>
+                        <div className="my-2"></div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500"># --- שינוי 1: התקנה וייבוא של ספריית ה-AI ---</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">!pip install -q -U google-generativeai</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">import google.generativeai as genai</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">from google.colab import userdata</div>
+                        <div className="my-2"></div>
+                        <div className="text-indigo-300">drive.mount('/content/drive')</div>
+                        <div className="text-indigo-300"># 2. Paths Configuration</div>
+                        <div className="text-indigo-300">PATH = '/content/drive/MyDrive/Gemstone_Project/'</div>
+                        <div className="text-indigo-300">MODEL_PATH = os.path.join(PATH, 'saved_model')</div>
+                        <div className="text-indigo-300">LABELS_PATH = os.path.join(PATH, 'labels.txt')</div>
+                        <div className="my-2"></div>
+                        <div className="text-indigo-300"># 3. Load Model using TFSMLayer</div>
+                        <div className="text-indigo-300">if os.path.exists(MODEL_PATH):</div>
+                        <div className="text-indigo-300">    sm_layer = tf.keras.layers.TFSMLayer(MODEL_PATH, call_endpoint='serving_default')</div>
+                        <div className="text-indigo-300">    model = tf.keras.Sequential([sm_layer])</div>
+                        <div className="text-indigo-300">    with open(LABELS_PATH, "r", encoding="utf-8") as f:</div>
+                        <div className="text-indigo-300">        class_names = [line.strip().split(' ')[1] for line in f.readlines()]</div>
+                        <div className="my-2"></div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500"># --- שינוי 2: הגדרת המפתח והדפסת מודלים נתמכים ---</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">API_KEY = userdata.get('GEMINI_API_KEY')</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">genai.configure(api_key=API_KEY)</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500"></div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500"># פעולת עזר שמדפיסה אילו מודלים נתמכים:</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">for m in genai.list_models():</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">    if 'generateContent' in m.supported_generation_methods:</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">        print(m.name)</div>
+                        <div className="my-2"></div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500"># הגדרת המודל הספציפי Gemma 3</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">ai_model = genai.GenerativeModel("gemma-3-1b-it")</div>
+                        <div className="my-2"></div>
+                        <div className="text-indigo-300"># ... (טעינת המודל של Teachable Machine נשארת זהה) ...</div>
+                        <div className="my-2"></div>
+                        <div className="text-indigo-300">def play_gemstone_theme_music(prediction):</div>
+                        <div className="text-indigo-300">    # ... (הקוד נשאר זהה) ...</div>
+                        <div className="my-2"></div>
+                        <div className="text-indigo-300">def open_gemstone_info(prediction):</div>
+                        <div className="text-indigo-300">    # ... (הקוד נשאר זהה) ...</div>
+                        <div className="my-2"></div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500"># --- שינוי 3: פונקציה חדשה לשאילת ה-AI ---</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">def ask_gemini_about_stone(stone_name):</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">    prompt = f"You are a gemologist. I found a &#123;stone_name&#125;. Tell me 3 rare facts in Hebrew."</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">    try:</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">        response = ai_model.generate_content(prompt)</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">        print(f"\\n🤖 AI Insights:\\n&#123;response.text&#125;")</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">    except Exception as e:</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">        print("AI info currently unavailable.")</div>
+                        <div className="my-2"></div>
+                        <div className="text-indigo-300">def predict_single(image_path, silent=False):</div>
+                        <div className="text-indigo-300">    # ... (הקוד נשאר זהה) ...</div>
+                        <div className="my-2"></div>
+                        <div className="text-indigo-300">def take_photo(filename='photo.jpg'):</div>
+                        <div className="text-indigo-300">    # ... (הקוד נשאר זהה) ...</div>
+                        <div className="my-2"></div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500"># --- שינוי 4: קריאה ל-AI בתוך התפריט הראשי ---</div>
+                        <div className="text-indigo-300">if choice == '1':</div>
+                        <div className="text-indigo-300">    photo = take_photo()</div>
+                        <div className="text-indigo-300">    pred_label, conf = predict_single(photo)</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">    ask_gemini_about_stone(pred_label) # שורה חדשה!</div>
+                        <div className="text-indigo-300">elif choice == '2':</div>
+                        <div className="text-indigo-300">    uploaded = files.upload()</div>
+                        <div className="text-indigo-300">    if uploaded:</div>
+                        <div className="text-indigo-300">        pred_label, conf = predict_single(list(uploaded.keys())[0])</div>
+                        <div className="bg-amber-900/40 text-amber-200 px-2 py-0.5 rounded border-l-4 border-amber-500">        ask_gemini_about_stone(pred_label) # שורה חדשה!</div>
+                        <div className="my-2"></div>
+                        <div className="text-indigo-300">elif choice == '3':</div>
+                        <div className="text-indigo-300">    # ... (אופציית הבדיקה נשארת זהה) ...</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 p-6 bg-green-50 rounded-2xl border border-green-100">
+                    <p className="text-green-800 font-bold text-center">
+                      מזל טוב! הפרויקט שלכם עכשיו משלב זיהוי תמונה (Computer Vision) יחד עם בינה מלאכותית יוצרת (Gemma 3) לקבלת חוויה מלאה.
+                    </p>
+                  </div>
                 </div>
               </div>
             </motion.div>
